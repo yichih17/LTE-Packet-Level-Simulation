@@ -231,8 +231,9 @@ void OutputResult(string Scheme, SimulationResult *Result)
 	string SimulationDetailFileName;
 
 	int UEID = UEnumber;
-	SimulationResultFileName = IntToString(UEID) + "_Simulation Result.csv";
-	SimulationDetailFileName = IntToString(UEID) + "_Simulation Detail.csv";
+	int Arrival = arrival_factor;
+	SimulationResultFileName = IntToString(UEID) + "_" + IntToString(Arrival) + "_Simulation Result.csv";
+	SimulationDetailFileName = IntToString(UEID) + "_" + IntToString(Arrival) + "_Simulation Detail.csv";
 
 	Write_SimulationResultFile.open(SimulationResultFileName, ios::out | ios::app);
 	if (Write_SimulationResultFile.fail())
@@ -341,10 +342,10 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 	double NumBitsTransmited[UEnumber] = { 0 };
 	int AssignedUE = 0;								// 哪個UE獲得了RB
 
-													//vector <double> BuffrtPacketArrivalTime;
-													//vector <int> BuffrtPacketUEOrder;
+//	vector <double> BuffrtPacketArrivalTime;
+//	vector <int> BuffrtPacketUEOrder;
 
-													// 紀錄要競爭RB的UE資訊 (UE編號、Arrival time of HOL packet)
+	// 紀錄要競爭RB的UE資訊 (UE編號、Arrival time of HOL packet)
 	vector <Packet> ScheduleUE;
 
 	//int NumUEHaveBufferPacket = 0;				//這個TTI有封包要傳送的UE個數
@@ -400,7 +401,7 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 				Result->Delay[AssignedUE] = ((K / K1) * SystemTimeHistory) + ((1 / K1) * SystemTimeNow);		// 同上
 
 				Queue->PacketArrivalTime[AssignedUE].erase(Queue->PacketArrivalTime[AssignedUE].begin());
-				//				Queue->PacketHOLDelay[AssignedUE].erase(Queue->PacketHOLDelay[AssignedUE].begin());
+//				Queue->PacketHOLDelay[AssignedUE].erase(Queue->PacketHOLDelay[AssignedUE].begin());
 				if (Queue->PacketArrivalTime[AssignedUE].size() == 0)										// 如果沒有資料要傳送就退出競爭
 					ScheduleUE.erase(ScheduleUE.begin() + (i % ScheduleUE.size()));
 				if (Queue->PacketArrivalTime[AssignedUE].empty())											// 如果RBAssign=1, 表示還有其他資料要傳，所以在跑一次迴圈，嘗試塞滿這個RB
@@ -488,7 +489,9 @@ int main()
 				Xj += (Xij * weight_i);
 			}
 			utilization = Xj * lambda;
-		} while (utilization > 1);
+		} while (utilization > 1 || utilization < 0.69);
+
+		cout << utilization << endl;
 
 		//give packet arrival time
 		srand((unsigned)time(NULL));			//亂數種子
