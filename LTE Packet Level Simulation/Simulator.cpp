@@ -282,7 +282,7 @@ void Buffer_Status(int t, BufferStatus *Queue, UE *UEList, vector <double> *Temp
 				Queue->PacketArrivalTime[i].push_back(TempPacketArrivalTime[i][TempPacketArrivalTimeID]);
 				TempPacketArrivalTimeID += 1;
 				TTIPacketCount[i] = TTIPacketCount[i] + 1;             // 累計此TTI的packet數
-				if (TempPacketArrivalTime[i].empty() || TempPacketArrivalTimeID > TempPacketArrivalTime[i].size() - 1)
+				if (TempPacketArrivalTime[i].empty() || (TempPacketArrivalTimeID > (TempPacketArrivalTime[i].size() - 1)))
 					break;
 			}
 		}
@@ -364,7 +364,7 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 
 	sort(ScheduleUE.begin(), ScheduleUE.end(), CP_PacketArrivalTime);	//依照HOL Packet Arrival Time從先到後排序
 
-																		// 開始競標RB看要分配給哪個UE
+	// 開始競標RB看要分配給哪個UE
 	for (int i = 0; i < total_RBG; i++)
 	{
 		if (ScheduleUE.size() == 0)
@@ -375,7 +375,7 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 		NumRBAssigned[AssignedUE] += 1;
 		double RBCarryBit = resource_element * CQIEfficiency(UE[AssignedUE].CQI);		//對於獲得這個RB的UE，RB可攜帶多少資料量
 
-																						//開始把資料從UE的buffer裡裝進RB裡
+		//開始把資料從UE的buffer裡裝進RB裡
 		double RBSizeSpace = RBCarryBit;
 		int RBAssign = 1;
 		while (RBAssign)
@@ -383,6 +383,8 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 			//第一個packet size比RB可攜帶的資料量大
 			if (Queue->HeadPacketSize[AssignedUE] > RBSizeSpace)
 			{
+				NumBitsTransmited[AssignedUE] += RBSizeSpace;		// 累計在這個TTI送的資料量
+				Result->Throughput[AssignedUE] += RBSizeSpace;		// 累計UE的throughput
 				Queue->HeadPacketSize[AssignedUE] -= RBSizeSpace;
 				RBSizeSpace = 0;
 				RBAssign = 0;
@@ -392,8 +394,14 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 			{
 				RBSizeSpace -= Queue->HeadPacketSize[AssignedUE];
 				Result->SchedulePacketNum[AssignedUE] += 1;
+				NumBitsTransmited[AssignedUE] += Queue->HeadPacketSize[AssignedUE];		// 累計在這個TTI送的資料量
+				Result->Throughput[AssignedUE] += Queue->HeadPacketSize[AssignedUE];	// 累計UE的throughput
 
 				double SystemTimeNow = (t + 1) - Queue->PacketArrivalTime[AssignedUE][0];
+				if (NumRBAssigned[AssignedUE] > 1)
+					SystemTimeNow += 1;
+				else
+					SystemTimeNow += NumBitsTransmited[AssignedUE] / NumRBAssigned[AssignedUE] * RBCarryBit;
 				double SystemTimeHistory = Result->SystemTime[AssignedUE];
 				double K = Result->SchedulePacketNum[AssignedUE] - 1;
 				double K1 = Result->SchedulePacketNum[AssignedUE];
@@ -409,8 +417,7 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 				Queue->HeadPacketSize[AssignedUE] = UE[AssignedUE].packet_size;
 			}
 		}
-		NumBitsTransmited[AssignedUE] += (RBCarryBit - RBSizeSpace);	// 累計在這個TTI送的資料量
-		Result->Throughput[AssignedUE] += (RBCarryBit - RBSizeSpace);   // 累計UE的throughput
+
 	}
 
 	// 清算在這個TTI總共的時間花費
@@ -489,7 +496,7 @@ int main()
 				Xj += (Xij * weight_i);
 			}
 			utilization = Xj * lambda;
-		} while (utilization > 1 || utilization < 0.69);
+		} while (utilization > 1);
 
 		cout << utilization << endl;
 
