@@ -338,18 +338,15 @@ bool CP_PacketArrivalTime(Packet a, Packet b) { return a.ArrivalTime < b.Arrival
 
 void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 {
-	int NumRBAssigned[UEnumber] = { 0 };
-	double NumBitsTransmited[UEnumber] = { 0 };
-	int AssignedUE = 0;								// 哪個UE獲得了RB
+	int NumRBAssigned[UEnumber] = { 0 };			//UE在這個TTI得到的RB個數
+	double NumBitsTransmited[UEnumber] = { 0 };		//UE在這個TTI傳送出去的資料量
+	int AssignedUE = 0;								//哪個UE獲得了RB
 
-//	vector <double> BuffrtPacketArrivalTime;
-//	vector <int> BuffrtPacketUEOrder;
+	//vector <double> BuffrtPacketArrivalTime;
+	//vector <int> BuffrtPacketUEOrder;
 
-	// 紀錄要競爭RB的UE資訊 (UE編號、Arrival time of HOL packet)
+	//紀錄要競爭RB的UE(有資料要傳送的UE)資訊(UE編號、Arrival time of HOL packet)
 	vector <Packet> ScheduleUE;
-
-	//int NumUEHaveBufferPacket = 0;				//這個TTI有封包要傳送的UE個數
-	//int NumBufferPacket = 0;
 
 	for (int j = 0; j < UEnumber; j++)
 	{
@@ -359,18 +356,17 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 			ScheduleUE.push_back(temp);
 		}
 	}
-	if (ScheduleUE.size() == 0)
+	if (ScheduleUE.size() == 0)						//這個TTI都沒有UE有資料要傳
 		return;
-
 	sort(ScheduleUE.begin(), ScheduleUE.end(), CP_PacketArrivalTime);	//依照HOL Packet Arrival Time從先到後排序
 
-	// 開始競標RB看要分配給哪個UE
+	//開始競標RB看要分配給哪個UE
 	for (int i = 0; i < total_RBG; i++)
 	{
 		if (ScheduleUE.size() == 0)
 			return;
 
-		//分配RBi給UE
+		//分配RB給UE (平均分配)
 		AssignedUE = ScheduleUE[i % ScheduleUE.size()].belongUE;
 		NumRBAssigned[AssignedUE] += 1;
 		double RBCarryBit = resource_element * CQIEfficiency(UE[AssignedUE].CQI);		//對於獲得這個RB的UE，RB可攜帶多少資料量
@@ -406,7 +402,7 @@ void EqualRB(int t, BufferStatus *Queue, UE *UE, SimulationResult *Result)
 				double K = Result->SchedulePacketNum[AssignedUE] - 1;
 				double K1 = Result->SchedulePacketNum[AssignedUE];
 				Result->SystemTime[AssignedUE] = ((K / K1) * SystemTimeHistory) + ((1 / K1) * SystemTimeNow);	// 計算每一個packet delay
-				Result->Delay[AssignedUE] = ((K / K1) * SystemTimeHistory) + ((1 / K1) * SystemTimeNow);		// 同上
+				Result->Delay[AssignedUE] = ((K / K1) * SystemTimeHistory) + ((1 / K1) * SystemTimeNow);		// 同上 (為什麼要算兩次?懶得改)
 
 				Queue->PacketArrivalTime[AssignedUE].erase(Queue->PacketArrivalTime[AssignedUE].begin());
 //				Queue->PacketHOLDelay[AssignedUE].erase(Queue->PacketHOLDelay[AssignedUE].begin());
@@ -496,11 +492,11 @@ int main()
 				Xj += (Xij * weight_i);
 			}
 			utilization = Xj * lambda;
-		} while (utilization > 1);
+		} while (utilization >= 1);				//如果Utilization大於等於1跑了也沒意義
 
 		cout << utilization << endl;
 
-		//give packet arrival time
+		//Give packet arrival time
 		srand((unsigned)time(NULL));			//亂數種子
 		double BufferTimer = 0.0;				//每個UE在eNB裡對應buffer的時間軸
 		double InterArrivalTime = 0.0;			//packet的inter-arrival time
@@ -623,6 +619,7 @@ int main()
 		SimulationResult EqualRB_Result_aft1000wTTI;
 		for (int i = 0; i < UEnumber; i++)
 		{
+			//initialize
 			EqualRB_Buffer.PacketArrivalTime[i].clear();
 			EqualRB_Buffer.PacketHOLDelay[i].clear();
 			EqualRB_Buffer.HeadPacketSize[i] = UEList[i].packet_size;
@@ -630,12 +627,14 @@ int main()
 
 		for (int t = 0; t < simulation_time; t++)
 		{
+			//顯示執行進度
 			if ((t + 1) % (simulation_time / 20) == 0)
 				cout << (double)(t + 1) / (double)simulation_time * 100 << "%, TTI=" << t + 1 << endl;
 
 			Buffer_Status(t, &EqualRB_Buffer, UEList, TempPacketArrivalTime, &EqualRB_Result);
 			EqualRB(t, &EqualRB_Buffer, UEList, &EqualRB_Result);
 
+			//觀察1000萬ms時的結果
 			if (t == 10000000)
 			{
 				for (int i = 0; i < UEnumber; i++)
@@ -645,6 +644,7 @@ int main()
 			}
 		}
 
+		//計算程式執行結束時buffer裡的剩餘封包個數
 		for (int i = 0; i < UEnumber; i++)
 			EqualRB_Result.RemainPacketNum[i] = EqualRB_Buffer.PacketArrivalTime[i].size();
 

@@ -20,14 +20,13 @@
 
 //Simulation parameter
 #define simulation_time 100000000	//ms(TTI
-#define UE_dis_mode 1			//0: uniform 1:hotspot
-#define UE_type_number 3		//DB = 50, 100, 300ms
+#define UE_dis_mode 1				//0: uniform 1:hotspot
+#define UE_type_number 3			//DB = 50, 100, 300ms
 #define UEnumber 25
 #define arrival_factor 1
 
 #include<vector>
 
-enum type_bs { macro, ap, ue };
 enum type_ue { type1, type2, type3, type4 };
 enum type_distribution { uniform, hotspot };
 
@@ -40,12 +39,12 @@ int LTECQIRange[];
 int range_ap[];
 extern double macro_eff[15];
 extern double ap_capacity[8];
+//上面有些東西沒用但我懶得改
 
 /*attribute of BS*/
 struct BS
 {
 	int num;
-	type_bs type;
 	double coor_X, coor_Y;
 	double lambda;
 	double systemT;
